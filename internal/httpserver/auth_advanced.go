@@ -31,9 +31,7 @@ type recoveryPage struct {
 
 type passwordResetRequestPage struct {
 	templates.Page
-	Error            string
 	ShowConfirmation bool
-	ResetLink        string
 }
 
 type passwordResetPage struct {
@@ -268,7 +266,7 @@ func (handler *authHandler) RecoverMFA(responseWriter http.ResponseWriter, reque
 }
 
 func (handler *authHandler) PasswordResetRequestPage(responseWriter http.ResponseWriter, _ *http.Request) {
-	if err := handler.renderPasswordResetRequest(responseWriter, http.StatusOK, false, "", ""); err != nil {
+	if err := handler.renderPasswordResetRequest(responseWriter, http.StatusOK, false); err != nil {
 		http.Error(responseWriter, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
@@ -291,7 +289,7 @@ func (handler *authHandler) RequestPasswordReset(responseWriter http.ResponseWri
 			"success":       false,
 			"failureReason": "email not found",
 		})
-		if err := handler.renderPasswordResetRequest(responseWriter, http.StatusNotFound, false, "No account exists for that email.", ""); err != nil {
+		if err := handler.renderPasswordResetRequest(responseWriter, http.StatusOK, true); err != nil {
 			handler.internalError(responseWriter, request, err)
 		}
 		return
@@ -313,7 +311,7 @@ func (handler *authHandler) RequestPasswordReset(responseWriter http.ResponseWri
 		"resetToken": resetToken.Value,
 		"resetLink":  resetLink,
 	})
-	if err := handler.renderPasswordResetRequest(responseWriter, http.StatusOK, true, "", "/password-reset/"+resetToken.Value); err != nil {
+	if err := handler.renderPasswordResetRequest(responseWriter, http.StatusOK, true); err != nil {
 		handler.internalError(responseWriter, request, err)
 	}
 }
@@ -409,9 +407,9 @@ func (handler *authHandler) renderMFARecovery(responseWriter http.ResponseWriter
 	return handler.renderer.Render(responseWriter, statusCode, "mfa-recovery", recoveryPage{Title: "Use a Backup Code", Error: errorMessage})
 }
 
-func (handler *authHandler) renderPasswordResetRequest(responseWriter http.ResponseWriter, statusCode int, showConfirmation bool, errorMessage, resetLink string) error {
+func (handler *authHandler) renderPasswordResetRequest(responseWriter http.ResponseWriter, statusCode int, showConfirmation bool) error {
 	return handler.renderer.Render(responseWriter, statusCode, "password-reset-request", passwordResetRequestPage{
-		Title: "Reset Password", Error: errorMessage, ShowConfirmation: showConfirmation, ResetLink: resetLink,
+		Title: "Reset Password", ShowConfirmation: showConfirmation,
 	})
 }
 
