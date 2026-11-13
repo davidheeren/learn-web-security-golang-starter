@@ -62,8 +62,8 @@ func (handler *Handler) Page(responseWriter http.ResponseWriter, request *http.R
 		return
 	}
 	handler.logger.Event("account_accessed", map[string]any{
-		"userId": current.User.ID,
-		"email": current.User.Email,
+		"userId":    current.User.ID,
+		"email":     current.User.Email,
 		"expiresAt": current.Session.ExpiresAt.Format(time.DateTime),
 	})
 	if err := handler.renderPage(responseWriter, http.StatusOK, current, ""); err != nil {
