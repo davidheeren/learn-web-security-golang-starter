@@ -71,6 +71,18 @@ func ExtractTaxDocumentArchive(encryptionKeyring Keyring, contents []byte, extra
 		if isIgnoredArchiveEntry(entry.Name) {
 			continue
 		}
+		if filepath.IsAbs(entry.Name) {
+			return ExtractedTaxDocumentArchive{}, &ArchiveImportError{Message: "Archive paths be absolute", StatusCode: 400}
+		}
+		if strings.Contains(entry.Name, `\`) {
+			return ExtractedTaxDocumentArchive{}, &ArchiveImportError{Message: "Archive paths cannot contain \\", StatusCode: 400}
+		}
+		if !isInsideDirectory(importDirectory, entryDestination) {
+			return ExtractedTaxDocumentArchive{}, &ArchiveImportError{Message: "Archive paths cannot be outside of import directory", StatusCode: 400}
+		}
+		if entry.Mode()&os.ModeSymlink == os.ModeSymlink {
+			return ExtractedTaxDocumentArchive{}, &ArchiveImportError{Message: "Archive files cannot be a symlink", StatusCode: 400}
+		}
 		if strings.HasSuffix(entry.Name, "/") {
 			plannedEntries = append(plannedEntries, plannedArchiveEntry{directory: true, destination: entryDestination})
 			continue
@@ -186,4 +198,12 @@ func discardArchiveAfterWriteFailure(archive ExtractedTaxDocumentArchive, err er
 		return ExtractedTaxDocumentArchive{}, errors.Join(err, discardErr)
 	}
 	return ExtractedTaxDocumentArchive{}, err
+}
+
+func isInsideDirectory(directory, candidatePath string) bool {
+	relativePath, err := filepath.Rel(directory, candidatePath)
+	return err == nil &&
+		relativePath != "." &&
+		relativePath != ".." &&
+		!strings.HasPrefix(relativePath, ".."+string(filepath.Separator))
 }
