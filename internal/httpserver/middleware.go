@@ -9,6 +9,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -51,6 +52,36 @@ func contentTypeOptions(next http.Handler) http.Handler {
 		responseWriter.Header().Set("X-Content-Type-Options", "nosniff")
 		next.ServeHTTP(responseWriter, request)
 	})
+}
+
+func validateRequestOrigin(appOrigin string, renderer *templates.Renderer) middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
+			if request.Method != http.MethodPost {
+				next.ServeHTTP(responseWriter, request)
+				return
+			}
+			origin := request.Header.Get("Origin")
+			if origin == appOrigin {
+				next.ServeHTTP(responseWriter, request)
+				return
+			}
+			if origin == "" {
+				refer := request.Header.Get("Referer")
+				referUrl, err := url.Parse(refer)
+				if err == nil {
+					referOrigin := url.URL{Scheme: referUrl.Scheme, Host: referUrl.Host}
+					if referOrigin.String() == appOrigin {
+						next.ServeHTTP(responseWriter, request)
+						return
+					}
+				}
+			}
+			if err := httpx.RespondWithErrorPage(responseWriter, renderer, http.StatusForbidden, "Forbidden", "This request did not come from Bearly Secure."); err != nil {
+				http.Error(responseWriter, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			}
+		})
+	}
 }
 
 func cspNonce(next http.Handler) http.Handler {
