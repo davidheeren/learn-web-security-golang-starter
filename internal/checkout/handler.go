@@ -2,6 +2,7 @@ package checkout
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -80,6 +81,16 @@ func (handler *Handler) Page(responseWriter http.ResponseWriter, request *http.R
 func (handler *Handler) Submit(responseWriter http.ResponseWriter, request *http.Request) {
 	current, ok := handler.requireAuth(responseWriter, request)
 	if !ok {
+		return
+	}
+	actualToken, err := httpx.FormValue(request, "csrfToken")
+	if err != nil {
+		handler.errorPage(responseWriter, http.StatusBadRequest, "Invalid Request", "The submitted form is invalid.")
+		return
+	}
+	fmt.Println(actualToken)
+	if !sessions.CSRFTokensMatch(current.Session.CSRFToken, actualToken) {
+		handler.errorPage(responseWriter, http.StatusForbidden, "Forbidden", "Your request could not be verified.")
 		return
 	}
 	items, err := handler.cartStore.ListItems(request.Context(), current.User.ID)
